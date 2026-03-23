@@ -1,0 +1,82 @@
+// Import required modules
+const express = require("express");
+const multer = require("multer");
+const fs = require("fs");
+const pdfParse = require("pdf-parse");
+const gTTS = require("gtts");
+const ffmpeg = require("fluent-ffmpeg");
+const path = require("path");
+
+// Initialize app
+const app = express();
+
+// Serve static files
+app.use(express.static("public"));
+
+// Create upload folder if not exists
+if (!fs.existsSync("uploads")) {
+    fs.mkdirSync("uploads");
+}
+
+// Create output folder if not exists
+if (!fs.existsSync("output")) {
+    fs.mkdirSync("output");
+}
+
+// Multer setup
+const upload = multer({ dest: "uploads/" });
+
+// Upload route
+app.post("/upload", upload.single("pdf"), async (req, res) => {
+    try {
+        // Read PDF file
+        const buffer = fs.readFileSync(req.file.path);
+
+        // Extract text from PDF
+        const data = await pdfParse(buffer);
+        const text = data.text;
+
+        // Audio file path
+        const audioPath = path.join(__dirname, "output/audio.mp3");
+
+        // Create Nepali voice
+        const tts = new gTTS(text, "ne");
+
+        tts.save(audioPath, () => {
+
+            // Video output path
+            const videoPath = path.join(__dirname, "output/video.mp4");
+
+            // Create video using ffmpeg
+            ffmpeg()
+                .input("color=c=black:s=1280x720:d=30")
+                .inputFormat("lavfi")
+                .input(audioPath)
+                .outputOptions([
+                    "-shortest",
+                    "-vf drawtext=text='PDF Video':fontcolor=white:fontsize=40:x=(w-text_w)/2:y=(h-text_h)/2",
+                    "-c:v libx264",
+                    "-c:a aac"
+                ])
+                .save(videoPath)
+                .on("end", () => {
+                    // Send file for download
+                    res.download(videoPath);
+                })
+                .on("error", (err) => {
+                    console.error(err);
+                    res.send("Error creating video");
+                });
+
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.send("Error processing PDF");
+    }
+});
+
+// Start server
+app.listen(3000, () => {
+    console.log("Server running at http://localhost:3000");
+});
