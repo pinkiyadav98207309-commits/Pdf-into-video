@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF to MP4 (Nepali Voice)</title>
+</head>
+
+<body>
+
+<h2>PDF लाई MP4 Video मा बदल्नुहोस्</h2>
+
+<input type="file" id="pdfFile">
+<br><br>
+
+<button onclick="uploadPDF()">Convert to Video</button>
+
+<p id="status"></p>
+
+<script>
+async function uploadPDF() {
+    const fileInput = document.getElementById("pdfFile");
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert("Please select a PDF file");
+        return;
+    }
+
+    document.getElementById("status").innerText = "Uploading and processing...";
+
+    const formData = new FormData();
+    formData.append("pdf", file);
+
+    const response = await fetch("/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const blob = await response.blob();
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "video.mp4";
+    a.click();
+
+    document.getElementById("status").innerText = "Download started!";
+}
+</script>
+
+</body>
+</html>
